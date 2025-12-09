@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CloudNote - Dashboard</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <header class="dashboard-header">
+            <div class="header-content">
+                <div class="header-left">
+                    <h1>CloudNote</h1>
+                    <div class="search-container">
+                        <input type="text" id="searchInput" placeholder="Search notes...">
+                    </div>
+                </div>
+                <div class="header-right">
+                    <button class="theme-toggle" id="themeToggle">🌙</button>
+                    <button class="logout-btn" id="logoutBtn">Logout</button>
+                </div>
+            </div>
+        </header>
+
+        <main class="dashboard-content">
+            <div class="filters">
+                <button class="filter-btn active" data-filter="all">All Notes</button>
+                <button class="filter-btn" data-filter="pinned">Pinned</button>
+                <button class="filter-btn" data-filter="archived">Archived</button>
+                
+                <div style="margin-left: auto; display: flex; gap: 5px;">
+                    <button class="color-filter-btn filter-btn" data-color="red" style="background: #ff6b6b; color: white;">🔴</button>
+                    <button class="color-filter-btn filter-btn" data-color="blue" style="background: #4a90e2; color: white;">🔵</button>
+                    <button class="color-filter-btn filter-btn" data-color="green" style="background: #51cf66; color: white;">🟢</button>
+                    <button class="color-filter-btn filter-btn" data-color="yellow" style="background: #ffd43b; color: #333;">🟡</button>
+                    <button class="color-filter-btn filter-btn" data-color="purple" style="background: #9775fa; color: white;">🟣</button>
+                    <button class="color-filter-btn filter-btn" data-color="orange" style="background: #ff922b; color: white;">🟠</button>
+                    <button class="color-filter-btn filter-btn" data-color="pink" style="background: #f06595; color: white;">🌸</button>
+                    <button class="color-filter-btn filter-btn" data-color="gray" style="background: #868e96; color: white;">⚫</button>
+                </div>
+            </div>
+
+            <div id="notesContainer" class="notes-grid">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Loading notes...</p>
+                </div>
+            </div>
+        </main>
+
+        <button class="create-note-btn" id="createNoteBtn" title="Create New Note">+</button>
+    </div>
+
+    <!-- Note Modal -->
+    <div class="modal" id="noteModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Create Note</h2>
+                <button class="close-modal" id="closeModal">&times;</button>
+            </div>
+            <form id="noteForm">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="noteTitle">Title</label>
+                        <input type="text" id="noteTitle" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="noteContent">Content</label>
+                        <textarea id="noteContent" rows="10" required style="width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 1em; background: var(--background); color: var(--text-color); font-family: inherit; resize: vertical;"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="noteColor">Color Tag</label>
+                        <select id="noteColor" style="width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 1em; background: var(--background); color: var(--text-color);">
+                            <option value="">None</option>
+                            <option value="red">Red</option>
+                            <option value="blue">Blue</option>
+                            <option value="green">Green</option>
+                            <option value="yellow">Yellow</option>
+                            <option value="purple">Purple</option>
+                            <option value="orange">Orange</option>
+                            <option value="pink">Pink</option>
+                            <option value="gray">Gray</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-small" id="summarizeNoteBtn" style="display: none;">Summarize with AI</button>
+                    <button type="button" class="btn btn-secondary btn-small" id="deleteNoteBtn" style="display: none; background: var(--error-color); color: white;">Delete</button>
+                    <button type="button" class="btn btn-secondary btn-small" id="cancelBtn">Cancel</button>
+                    <button type="submit" class="btn btn-primary btn-small">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast"></div>
+
+    <script src="js/api.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/notes.js"></script>
+    <script src="js/ui.js"></script>
+    <script>
+        // Check authentication
+        if (!authManager.requireAuth()) {
+            // Redirect will happen in requireAuth
+        } else {
+            // Initialize dashboard
+            notesManager.loadNotes();
+
+            // Search functionality
+            let searchTimeout;
+            document.getElementById('searchInput').addEventListener('input', (e) => {
+                clearTimeout(searchTimeout);
+                const query = e.target.value.trim();
+                searchTimeout = setTimeout(() => {
+                    if (query) {
+                        notesManager.searchNotes(query);
+                    } else {
+                        notesManager.loadNotes();
+                    }
+                }, 300);
+            });
+
+            // Filter buttons
+            document.querySelectorAll('.filter-btn[data-filter]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    notesManager.setFilter(btn.dataset.filter);
+                });
+            });
+
+            // Color filter buttons
+            document.querySelectorAll('.color-filter-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    notesManager.setColorFilter(btn.dataset.color);
+                });
+            });
+
+            // Create note button
+            document.getElementById('createNoteBtn').addEventListener('click', () => {
+                notesManager.openEditModal();
+            });
+
+            // Logout button
+            document.getElementById('logoutBtn').addEventListener('click', () => {
+                authManager.logout();
+            });
+
+            // Form submission
+            document.getElementById('noteForm').addEventListener('submit', (e) => {
+                notesManager.handleFormSubmit(e);
+            });
+
+            // Close modal
+            document.getElementById('closeModal').addEventListener('click', () => {
+                notesManager.closeEditModal();
+            });
+
+            document.getElementById('cancelBtn').addEventListener('click', () => {
+                notesManager.closeEditModal();
+            });
+
+            // Close modal on outside click
+            document.getElementById('noteModal').addEventListener('click', (e) => {
+                if (e.target.id === 'noteModal') {
+                    notesManager.closeEditModal();
+                }
+            });
+
+            // Summarize button
+            document.getElementById('summarizeNoteBtn').addEventListener('click', async () => {
+                const noteId = document.getElementById('summarizeNoteBtn').dataset.noteId;
+                if (!noteId) return;
+
+                const btn = document.getElementById('summarizeNoteBtn');
+                const originalText = btn.textContent;
+                btn.disabled = true;
+                btn.textContent = 'Summarizing...';
+
+                try {
+                    const response = await api.summarizeNote(noteId);
+                    if (response.success) {
+                        notesManager.showToast('Summary generated successfully', 'success');
+                        notesManager.loadNotes();
+                    } else {
+                        notesManager.showToast(response.message || 'Error generating summary', 'error');
+                    }
+                } catch (error) {
+                    notesManager.showToast('Error generating summary: ' + error.message, 'error');
+                } finally {
+                    btn.disabled = false;
+                    btn.textContent = originalText;
+                }
+            });
+
+            // Delete button
+            document.getElementById('deleteNoteBtn').addEventListener('click', () => {
+                const noteId = document.getElementById('noteForm').dataset.noteId;
+                if (noteId) {
+                    notesManager.deleteNote(parseInt(noteId));
+                    notesManager.closeEditModal();
+                }
+            });
+        }
+    </script>
+</body>
+</html>
+
